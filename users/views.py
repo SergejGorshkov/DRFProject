@@ -12,7 +12,7 @@ class UserViewSet(ModelViewSet):
     def get_permissions(self):
         """ Получение прав для действий с пользователями """
         if self.action == 'create':  # Если действие - создание пользователя, то разрешаем его всем пользователям
-            return AllowAny()
+            return [AllowAny()]
 
     def get_serializer_class(self):
         """ Выбор сериализатора в зависимости от действия """

@@ -10,8 +10,9 @@ class PaymentViewSet(ModelViewSet):
     queryset = Payment.objects.all()
     serializer_class = PaymentSerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter]
-    filterset_fields = ['owner', 'payment_date', 'paid_course', 'paid_lesson', 'amount', 'payment_method']  # Поля для фильтрации
+    filterset_fields = ['owner', 'payment_date', 'paid_course', 'paid_lesson', 'amount', 'payment_method']
     ordering_fields = ['payment_date']  # Поле для сортировки
+
 
     def perform_create(self, serializer):
         """ Создание платежа и сохранение владельца в поле owner """
