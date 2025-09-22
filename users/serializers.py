@@ -1,11 +1,16 @@
 from rest_framework.serializers import ModelSerializer
 
-from users.models import Payment, User
+from users.models import User
 
-
-class PaymentSerializer(ModelSerializer):
-    """ Сериализатор для платежей """
-
+class UserSerializer(ModelSerializer):
+    """ Сериализатор пользователя """
     class Meta:
-        model = Payment
-        fields = '__all__' #('payment_date', 'paid_course', 'paid_lesson', 'amount', 'payment_method',)
+        model = User
+        fields = '__all__'
+
+
+class UserRegisterSerializer(ModelSerializer):
+    """ Сериализатор регистрации пользователя (с сокращенными полями) """
+    class Meta:
+        model = User
+        fields = ['email', 'password']

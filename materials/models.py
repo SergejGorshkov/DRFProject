@@ -1,5 +1,7 @@
 from django.db import models
 
+from config import settings
+
 
 class Course(models.Model):
     name = models.CharField(
@@ -20,6 +22,16 @@ class Course(models.Model):
         verbose_name="Описание курса",
         help_text="Введите описание курса",
     )
+    owner = models.ForeignKey( # связь с моделью User
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name="courses",
+        verbose_name="Владелец",
+        help_text="Введите владельца курса",
+        null=True,
+        blank=True
+    )
+
 
     class Meta:
         verbose_name = "Курс"
@@ -61,6 +73,15 @@ class Lesson(models.Model):
         verbose_name="Курс",
         help_text="Выберите курс",
     )
+    owner = models.ForeignKey( # связь с моделью User
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name="lessons",
+        verbose_name="Владелец",
+        help_text="Введите владельца урока",
+        null=True,
+        blank=True
+    )
 
     class Meta:
         verbose_name = "Урок"
@@ -68,3 +89,29 @@ class Lesson(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class Subscription(models.Model):
+    user = models.ForeignKey( # связь с моделью User
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='subscriptions',
+        verbose_name="Пользователь"
+    )
+    course = models.ForeignKey(
+        Course,
+        on_delete=models.CASCADE,
+        related_name='subscriptions',
+        verbose_name="Курс"
+    )
+    subscribed_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="Дата подписки"
+    )
+
+    class Meta:
+        verbose_name = "Подписка"
+        verbose_name_plural = "Подписки"
+
+    def __str__(self):
+        return f"Пользователь {self.user.email} подписан на {self.course.name}"
