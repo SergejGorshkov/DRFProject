@@ -66,4 +66,4 @@ class Payment(models.Model):
 
     def __str__(self):
         what_is_paid_for = self.paid_course or self.paid_lesson or "не указано"
-        return f"Платеж {self.user} - {self.amount} руб. ({what_is_paid_for})"
+        return f"Платеж {self.owner} - {self.amount} руб. ({what_is_paid_for})"
