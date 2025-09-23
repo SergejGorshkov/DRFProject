@@ -1,10 +1,12 @@
 from django.db import models
+
 from materials.models import Course, Lesson
 from users.models import User
 
 
 class Payment(models.Model):
     """Модель для хранения информации о платежах"""
+
     # способ платежа
     PAYMENT_METHOD_CHOICES = [
         ("cash", "Наличные"),
@@ -15,11 +17,11 @@ class Payment(models.Model):
     owner = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
-        related_name='payments',
+        related_name="payments",
         verbose_name="Плательщик",
         help_text="Введите плательщика",
         null=True,
-        blank=True
+        blank=True,
     )
     payment_date = models.DateTimeField(
         auto_now_add=True,
@@ -33,9 +35,9 @@ class Payment(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='payments',
-        verbose_name='Оплаченный курс',
-        help_text='Курс, за который произведена оплата'
+        related_name="payments",
+        verbose_name="Оплаченный курс",
+        help_text="Курс, за который произведена оплата",
     )
 
     paid_lesson = models.ForeignKey(
@@ -43,14 +45,12 @@ class Payment(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='payments',
-        verbose_name='Оплаченный урок',
-        help_text='Урок, за который произведена оплата'
+        related_name="payments",
+        verbose_name="Оплаченный урок",
+        help_text="Урок, за который произведена оплата",
     )
     amount = models.PositiveIntegerField(
-        default=0,
-        verbose_name='Сумма оплаты',
-        help_text='Сумма платежа в рублях'
+        default=0, verbose_name="Сумма оплаты", help_text="Сумма платежа в рублях"
     )
     payment_method = models.CharField(
         max_length=30,
@@ -62,8 +62,8 @@ class Payment(models.Model):
     class Meta:
         verbose_name = "Платеж"
         verbose_name_plural = "Платежи"
-        ordering = ['-payment_date']
+        ordering = ["-payment_date"]
 
     def __str__(self):
         what_is_paid_for = self.paid_course or self.paid_lesson or "не указано"
-        return f"Платеж {self.user} - {self.amount} руб. ({what_is_paid_for})"
+        return f"Платеж {self.owner} - {self.amount} руб. ({what_is_paid_for})"
