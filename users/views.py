@@ -1,7 +1,8 @@
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.viewsets import ModelViewSet
 
 from users.models import User
+from users.permissions import IsModerator, IsOwner
 from users.serializers import UserRegisterSerializer, UserSerializer
 
 
@@ -13,10 +14,20 @@ class UserViewSet(ModelViewSet):
 
     def get_permissions(self):
         """Получение прав для действий с пользователями"""
-        if (
-            self.action == "create"
-        ):  # Если действие - создание пользователя, то разрешаем его всем пользователям
-            return [AllowAny()]
+
+        if self.action == 'create':
+            self.permission_classes = [AllowAny]
+        elif self.action in ['list']:
+            self.permission_classes = [IsAuthenticated]
+        elif self.action in ['update', 'partial_update', 'retrieve', 'destroy']:
+            self.permission_classes = [IsAuthenticated & (IsModerator | IsOwner)]
+        else:
+            # Запасной вариант
+            self.permission_classes = [IsAuthenticated]
+
+        return [
+            permission() for permission in self.permission_classes
+        ]  # возвращаем разрешения в виде списка объектов
 
     def get_serializer_class(self):
         """Выбор сериализатора в зависимости от действия"""
