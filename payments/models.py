@@ -19,7 +19,7 @@ class Payment(models.Model):
         on_delete=models.SET_NULL,
         related_name="payments",
         verbose_name="Плательщик",
-        help_text="Введите плательщика",
+        help_text="Укажите плательщика",
         null=True,
         blank=True,
     )
@@ -50,13 +50,27 @@ class Payment(models.Model):
         help_text="Урок, за который произведена оплата",
     )
     amount = models.PositiveIntegerField(
-        default=0, verbose_name="Сумма оплаты", help_text="Сумма платежа в рублях"
+        default=0, verbose_name="Сумма оплаты", help_text="Укажите сумму оплаты в рублях"
     )
     payment_method = models.CharField(
         max_length=30,
         choices=PAYMENT_METHOD_CHOICES,
         verbose_name="Способ оплаты",
         help_text="Выберите способ оплаты",
+    )
+    session_id = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+        verbose_name="Идентификатор сессии",
+        help_text="Укажите идентификатор сессии платежа",
+    )
+    payment_link = models.URLField(
+        max_length=400,
+        null=True,
+        blank=True,
+        verbose_name="Ссылка на оплату",
+        help_text=("Ссылка для оплаты (для платежа через платежную систему)"),
     )
 
     class Meta:

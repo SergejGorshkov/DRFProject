@@ -14,7 +14,8 @@ load_dotenv(override=True)
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv("SECRET_KEY")
+SECRET_KEY = os.getenv("SECRET_KEY")  # Ключ Django для подписи сессий
+STRIPE_API_KEY = os.getenv("STRIPE_API_KEY")  # Ключ API для Stripe
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True if os.getenv("DEBUG") == "True" else False
@@ -33,6 +34,8 @@ INSTALLED_APPS = [
     "rest_framework",
     "django_filters",
     "rest_framework_simplejwt",
+    'drf_yasg',
+
     "users",
     "materials",
     "payments",
