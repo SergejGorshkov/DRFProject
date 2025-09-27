@@ -15,11 +15,11 @@ class UserViewSet(ModelViewSet):
     def get_permissions(self):
         """Получение прав для действий с пользователями"""
 
-        if self.action == 'create':
+        if self.action == "create":
             self.permission_classes = [AllowAny]
-        elif self.action in ['list']:
+        elif self.action in ["list"]:
             self.permission_classes = [IsAuthenticated]
-        elif self.action in ['update', 'partial_update', 'retrieve', 'destroy']:
+        elif self.action in ["update", "partial_update", "retrieve", "destroy"]:
             self.permission_classes = [IsAuthenticated & (IsModerator | IsOwner)]
         else:
             # Запасной вариант

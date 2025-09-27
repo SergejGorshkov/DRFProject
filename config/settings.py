@@ -2,6 +2,7 @@ import os
 from datetime import timedelta
 from pathlib import Path
 
+from celery.schedules import crontab
 from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -34,8 +35,8 @@ INSTALLED_APPS = [
     "rest_framework",
     "django_filters",
     "rest_framework_simplejwt",
-    'drf_yasg',
-
+    "drf_yasg",
+    "django_celery_beat",
     "users",
     "materials",
     "payments",
@@ -159,14 +160,18 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"  # По умолчанию 
 AUTH_USER_MODEL = "users.User"  # Для аутентификации используется собственный класс User
 
 # Настройка отправки почты через сервер Яндекса
-# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-# EMAIL_HOST = 'smtp.yandex.ru'
-# EMAIL_PORT = 465
-# EMAIL_USE_TLS = False
-# EMAIL_USE_SSL = True
-# EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')  # Адрес электронной почты для отправки почты
-# EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')  # Пароль от сервиса яндекса для отправки почты
-# DEFAULT_FROM_EMAIL = EMAIL_HOST_USER  # По умолчанию отправляем письма с этого адреса
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = os.getenv("EMAIL_HOST")
+EMAIL_PORT = os.getenv("EMAIL_PORT")
+EMAIL_USE_TLS = False
+EMAIL_USE_SSL = True
+EMAIL_HOST_USER = os.getenv(
+    "EMAIL_HOST_USER"
+)  # Адрес электронной почты для отправки почты
+EMAIL_HOST_PASSWORD = os.getenv(
+    "EMAIL_HOST_PASSWORD"
+)  # Пароль от сервиса яндекса для отправки почты
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER  # По умолчанию отправляем письма с этого адреса
 
 # Кэширование в Redis (для ускорения работы приложения). Установка: poetry add redis
 # CACHE_ENABLED = True  # Включаем кэширование в приложении (можно вынести в .env)
@@ -177,3 +182,26 @@ AUTH_USER_MODEL = "users.User"  # Для аутентификации испол
 #             'LOCATION': 'redis://127.0.0.1:6379/1',  # или 'redis://localhost:6379/1'
 #         }
 #     }
+
+# Настройки для Celery
+# URL-адрес брокера сообщений
+CELERY_BROKER_URL = os.getenv(
+    "CELERY_BROKER_URL"
+)  # Например, Redis, который по умолчанию работает на порту 6379
+# URL-адрес брокера результатов, также Redis
+CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND")
+# Часовой пояс для работы Celery
+CELERY_TIMEZONE = TIME_ZONE  # временная зона должна совпадать зоной в Django
+# Флаг отслеживания выполнения задач
+CELERY_TASK_TRACK_STARTED = True
+# Максимальное время на выполнение задачи
+CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 минут
+# Настройка расписания выполнения задач для Celery
+CELERY_BEAT_SCHEDULE = {
+    "deactivate-inactive-users-monthly": {
+        "task": "users.tasks.deactivate_inactive_users",  # Путь к задаче
+        "schedule": crontab(
+            hour=8, minute=0, day_of_week=1
+        ),  # Каждый понедельник в 8:00
+    },
+}

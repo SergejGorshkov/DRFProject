@@ -1,11 +1,12 @@
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import OrderingFilter
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.viewsets import ModelViewSet
-from rest_framework.permissions import IsAuthenticated, AllowAny
 
 from payments.models import Payment
 from payments.serializers import PaymentSerializer
-from payments.services import create_stripe_product, create_stripe_price, create_stripe_session
+from payments.services import (create_stripe_price, create_stripe_product,
+                               create_stripe_session)
 from users.permissions import IsModerator, IsOwner
 
 
@@ -50,21 +51,35 @@ class PaymentViewSet(ModelViewSet):
 
     def perform_create(self, serializer):
         """Создание платежа и сохранение владельца в поле owner"""
-        validated_data = serializer.validated_data # Получаем данные о платеже из запроса после валидации
+        validated_data = (
+            serializer.validated_data
+        )  # Получаем данные о платеже из запроса после валидации
 
         # Получаем данные о платеже из запроса после валидации
-        name = validated_data['paid_course']['name'] if validated_data.get('paid_course') else validated_data['paid_lesson']['name']
-        description = validated_data['paid_course']['description'] if validated_data.get('paid_course') else validated_data['paid_lesson']['description']
-        amount = validated_data['amount']
+        name = (
+            validated_data["paid_course"]["name"]
+            if validated_data.get("paid_course")
+            else validated_data["paid_lesson"]["name"]
+        )
+        description = (
+            validated_data["paid_course"]["description"]
+            if validated_data.get("paid_course")
+            else validated_data["paid_lesson"]["description"]
+        )
+        amount = validated_data["amount"]
 
         # Создаем продукт, цену и сессию в Stripe
         product = create_stripe_product(name, description)  # Создаем продукт в Stripe
         price = create_stripe_price(product, amount)  # Создаем цену в Stripe
-        session_id, payment_link = create_stripe_session(price)  # Создаем сессию в Stripe
+        session_id, payment_link = create_stripe_session(
+            price
+        )  # Создаем сессию в Stripe
 
         # Сохраняем данные в БД
         payment = serializer.save()  # Сохранение платежа в БД
         payment.owner = self.request.user  # Сохранение владельца платежа в поле owner
         payment.session_id = session_id  # Сохранение ID сессии в поле session_id
-        payment.payment_link = payment_link  # Сохранение ссылки на оплату в поле payment_link
+        payment.payment_link = (
+            payment_link  # Сохранение ссылки на оплату в поле payment_link
+        )
         payment.save()

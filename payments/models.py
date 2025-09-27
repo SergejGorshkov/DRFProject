@@ -50,7 +50,9 @@ class Payment(models.Model):
         help_text="Урок, за который произведена оплата",
     )
     amount = models.PositiveIntegerField(
-        default=0, verbose_name="Сумма оплаты", help_text="Укажите сумму оплаты в рублях"
+        default=0,
+        verbose_name="Сумма оплаты",
+        help_text="Укажите сумму оплаты в рублях",
     )
     payment_method = models.CharField(
         max_length=30,

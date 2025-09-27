@@ -11,6 +11,7 @@ from materials.models import Course, Lesson, Subscription
 from materials.paginators import MyPagination
 from materials.serializers import (CourseSerializer, LessonSerializer,
                                    SubscriptionSerializer)
+from materials.tasks import send_course_update_notification
 from users.permissions import IsModerator, IsOwner
 
 
@@ -46,6 +47,18 @@ class CourseViewSet(ModelViewSet):
         return [
             permission() for permission in self.permission_classes
         ]  # возвращаем разрешения в виде списка объектов
+
+    def perform_update(self, request, *args, **kwargs):
+        """Переопределение метода update для обновления курса"""
+        response = super().update(
+            request, *args, **kwargs
+        )  # Вызов родительского метода для обновления
+
+        # Запуск отложенной задачи для отправки уведомления подписчикам курса
+        course_id = self.get_object().id  # Получение ID курса из объекта response
+        send_course_update_notification.delay(course_id)  # Запуск задачи
+
+        return response
 
 
 # Будет использоваться GenericAPIView
@@ -107,8 +120,7 @@ class SubscriptionAPIView(APIView):
 
         # Проверяем и управляем подпиской
         subscription, created = Subscription.objects.get_or_create(
-            user=user,
-            course=course_item
+            user=user, course=course_item
         )
 
         if not created:
@@ -117,9 +129,9 @@ class SubscriptionAPIView(APIView):
             return Response(
                 {
                     "message": f'Подписка на курс "{course_item.name}" удалена',
-                    "subscribed": False
+                    "subscribed": False,
                 },
-                status=status.HTTP_200_OK
+                status=status.HTTP_200_OK,
             )
         else:
             # Если подписка была создана - возвращаем через сериализатор
@@ -128,7 +140,7 @@ class SubscriptionAPIView(APIView):
                 {
                     "message": f'Подписка на курс "{course_item.name}" добавлена',
                     "subscribed": True,
-                    "subscription": serializer.data
+                    "subscription": serializer.data,
                 },
-                status=status.HTTP_201_CREATED
+                status=status.HTTP_201_CREATED,
             )
