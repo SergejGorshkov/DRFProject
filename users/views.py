@@ -2,7 +2,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.viewsets import ModelViewSet
 
 from users.models import User
-from users.permissions import IsModerator, IsOwner
+from users.permissions import IsModerator, IsUserOwner
 from users.serializers import UserRegisterSerializer, UserSerializer
 
 
@@ -20,7 +20,7 @@ class UserViewSet(ModelViewSet):
         elif self.action in ["list"]:
             permission_classes = [IsAuthenticated]
         elif self.action in ["update", "partial_update", "retrieve", "destroy"]:
-            permission_classes = [IsAuthenticated & (IsModerator | IsOwner)]
+            permission_classes = [IsAuthenticated & (IsModerator | IsUserOwner)]
         else:
             # Запасной вариант
             permission_classes = [IsAuthenticated]

@@ -11,6 +11,7 @@ class IsModerator(BasePermission):
         return user.groups.filter(name="Moderators").exists()
 
 
+# Для объектов, которые принадлежат пользователю
 class IsOwner(BasePermission):
     """Класс для проверки, является ли пользователь владельцем объекта"""
 
@@ -18,3 +19,10 @@ class IsOwner(BasePermission):
         if obj.owner == request.user:
             return True
         return False
+
+
+# Для пользователей
+class IsUserOwner(BasePermission):
+    """Класс для проверки, является ли пользователь владельцем аккаунта"""
+    def has_object_permission(self, request, view, obj):
+        return obj == request.user
