@@ -9,8 +9,9 @@ from users.models import User
 
 
 @shared_task
-def send_deactivation_notification(user_email):
-    """Отправка уведомления о деактивации аккаунта."""
+def send_deactivation_notification(deactivated_emails):
+    """Отправка уведомления о деактивации аккаунтов."""
+
     try:
         subject = "Ваш аккаунт был деактивирован"
         message = """
@@ -29,14 +30,14 @@ def send_deactivation_notification(user_email):
             subject,
             message,
             settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[user_email],
+            recipient_list=[*deactivated_emails],
             fail_silently=False,
         )
 
-        return f"Уведомление о деактивации отправлено пользователю {user_email}"
+        return f"Уведомление о деактивации отправлено пользователям: {deactivated_emails}."
 
     except Exception as e:
-        return f"Ошибка отправки уведомления о деактивации пользователя: {str(e)}"
+        return f"Ошибка отправки уведомления о деактивации пользователей: {str(e)}"
 
 
 @shared_task
@@ -66,10 +67,10 @@ def deactivate_inactive_users():
             user.save()
             deactivated_emails.append(user.email)
 
-            # Отправка уведомления пользователю
-            send_deactivation_notification.delay(user.email)
+        # Отправка уведомления пользователям о деактивации
+        send_deactivation_notification.delay(deactivated_emails)
 
-        return f"Успешно деактивировано {user_count} пользователей"
+        return f"Успешно деактивировано {user_count} пользователей."
 
     except Exception as e:
         return f"Ошибка: {str(e)}"
