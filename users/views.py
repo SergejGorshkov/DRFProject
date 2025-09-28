@@ -15,18 +15,18 @@ class UserViewSet(ModelViewSet):
     def get_permissions(self):
         """Получение прав для действий с пользователями"""
 
-        if self.action == 'create':
-            self.permission_classes = [AllowAny]
-        elif self.action in ['list']:
-            self.permission_classes = [IsAuthenticated]
-        elif self.action in ['update', 'partial_update', 'retrieve', 'destroy']:
-            self.permission_classes = [IsAuthenticated & (IsModerator | IsOwner)]
+        if self.action == "create":
+            permission_classes = [AllowAny]
+        elif self.action in ["list"]:
+            permission_classes = [IsAuthenticated]
+        elif self.action in ["update", "partial_update", "retrieve", "destroy"]:
+            permission_classes = [IsAuthenticated & (IsModerator | IsOwner)]
         else:
             # Запасной вариант
-            self.permission_classes = [IsAuthenticated]
+            permission_classes = [IsAuthenticated]
 
         return [
-            permission() for permission in self.permission_classes
+            permission() for permission in permission_classes
         ]  # возвращаем разрешения в виде списка объектов
 
     def get_serializer_class(self):
