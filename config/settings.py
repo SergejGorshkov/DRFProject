@@ -22,7 +22,7 @@ STRIPE_API_KEY = os.getenv("STRIPE_API_KEY")  # Ключ API для Stripe
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True if os.getenv("DEBUG") == "True" else False
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = ["*"]  # Разрешенные хосты для доступа к приложению
 
 # Application definition
 
@@ -53,7 +53,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = "config.urls"
+ROOT_URLCONF = "config.urls"  # Корневой URL-конфигурационный файл
 
 TEMPLATES = [
     {
@@ -142,6 +142,7 @@ STATIC_URL = "/static/"  # Маршрут к папке со статическ�
 STATICFILES_DIRS = (
     BASE_DIR / "static",
 )  # Список папок на диске, из которых будут подгружаться статические файлы
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")  # Путь к папке на диске, куда будут сохраняться статические файлы
 
 MEDIA_URL = "/media/"  # Путь к папке с медиафайлами
 MEDIA_ROOT = os.path.join(
@@ -206,3 +207,11 @@ if 'test' in sys.argv:
             'NAME': BASE_DIR / 'db.sqlite3',         # Файл БД SQLite в корне проекта
         }
     }
+
+# Настройка кэша Redis
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': 'redis://redis:6379/0',  # Адрес Redis сервера
+    }
+}
