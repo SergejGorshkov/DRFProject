@@ -173,21 +173,11 @@ EMAIL_HOST_PASSWORD = os.getenv(
 )  # Пароль от сервиса яндекса для отправки почты
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER  # По умолчанию отправляем письма с этого адреса
 
-# Кэширование в Redis (для ускорения работы приложения). Установка: poetry add redis
-# CACHE_ENABLED = True  # Включаем кэширование в приложении (можно вынести в .env)
-# if CACHE_ENABLED:
-#     CACHES = {
-#         'default': {
-#             'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-#             'LOCATION': 'redis://127.0.0.1:6379/1',  # или 'redis://localhost:6379/1'
-#         }
-#     }
 
 # Настройки для Celery
-# URL-адрес брокера сообщений
-CELERY_BROKER_URL = os.getenv(
-    "CELERY_BROKER_URL"
-)  # Например, Redis, который по умолчанию работает на порту 6379
+
+# URL-адрес брокера сообщений. Например, Redis.
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL")
 # URL-адрес брокера результатов, также Redis
 CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND")
 # Часовой пояс для работы Celery

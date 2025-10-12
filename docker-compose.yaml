@@ -1,0 +1,154 @@
+# Определение сервисов (контейнеров), которые будут запущены
+services:
+  web: # Сервис веб-приложения Django
+    build: .  # Контейнер будет создан из Dockerfile в текущей директории
+
+    # Команда для запуска Django. Применение миграций базы данных, затем запуск Django сервера на порту 8000
+    command: >
+      bash -c "
+        python manage.py migrate && 
+        python manage.py runserver 0.0.0.0:8000
+      "
+
+    # Проброс портов: порт_хоста:порт_контейнера
+    ports:
+      - "8000:8000"  # Порт веб-сервера Django. Доступ к приложению по http://localhost:8000
+
+    # Зависимости от других сервисов
+    depends_on:
+      db:
+        condition: service_healthy  # Ждать пока БД не станет здоровой
+      redis:
+        condition: service_healthy  # Ждать пока Redis не станет здоровым
+
+    # Монтирование томов для хранения данных
+    volumes:
+      - .:/app  # Монтировать текущую директорию хоста в /app контейнера
+      - static_volume:/app/static  # Монтировать том для статических файлов Django
+      - media_volume:/app/media  # Монтировать том для медиа-файлов Django
+
+    # Переменные окружения для подключения к БД
+    environment:
+      - DATABASE_HOST=db  # Имя сервиса как хост
+      - DATABASE_PORT=5432  # Порт БД по умолчанию
+      - REDIS_URL=${REDIS_URL}  # URL Redis из .env
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL}  # URL Celery из .env
+
+    # Загрузка остальных переменных окружения из файла .env
+    env_file:
+      - .env
+  #############################################################################################
+  # Сервис Celery worker для выполнения фоновых задач
+  celery:
+    build: .  # Используем тот же образ, что и для веб-сервиса
+    command: celery -A config worker --loglevel=info  # Команда запуска Celery worker
+
+    # Зависимости от других сервисов
+    depends_on:
+      db:
+        condition: service_healthy  # Ждать пока БД не станет здоровой
+      redis:
+        condition: service_healthy  # Ждать пока Redis не станет здоровым
+      web:
+        condition: service_started  # Ждать запуска веб-сервиса
+
+    # Монтирование томов для хранения данных
+    volumes:
+      - .:/app  # Монтировать текущую директорию хоста в /app контейнера
+      - static_volume:/app/static  # Монтировать том для статических файлов Django
+      - media_volume:/app/media  # Монтировать том для медиа-файлов Django
+
+    # Переменные окружения для подключения к БД
+    environment:
+      - DATABASE_HOST=db           # Имя сервиса как хост
+      - DATABASE_PORT=${DATABASE_PORT}  # Порт БД из .env
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
+      - CELERY_BROKER_URL=redis://redis:6379/1
+
+    # Загрузка остальных переменных окружения из файла .env
+    env_file:
+      - .env
+  #############################################################################################
+  # Сервис Celery beat для планирования периодических задач
+  celery-beat:
+    build: .  # Используем тот же образ, что и для веб-сервиса
+    command: celery -A config beat --loglevel=info  # Команда запуска Celery beat (планировщик)
+
+    # Зависимости от других сервисов
+    depends_on:
+      redis:
+        condition: service_healthy  # Ждать пока Redis не станет здоровым
+      web:
+        condition: service_started  # Ждать запуска веб-сервиса
+
+    # Монтирование томов для хранения данных
+    volumes:
+      - .:/app  # Монтировать текущую директорию хоста в /app контейнера
+      - static_volume:/app/static  # Монтировать том для статических файлов Django
+      - media_volume:/app/media  # Монтировать том для медиа-файлов Django
+
+    # Переменные окружения для подключения к БД
+    environment:
+      - DATABASE_HOST=db           # Имя сервиса как хост
+      - DATABASE_PORT=${DATABASE_PORT}  # Порт БД из .env
+      - REDIS_URL=${REDIS_URL}  # URL Redis из .env
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL}  # URL Celery из .env
+
+    # Загрузка остальных переменных окружения из файла .env
+    env_file:
+      - .env
+  #############################################################################################
+  # Сервис базы данных PostgreSQL
+  db:
+    # Официальный образ PostgreSQL v.16.0 из Docker Hub
+    image: postgres:16.0
+
+    # Параметры подключения к БД
+    environment:
+      - POSTGRES_DB=${DATABASE_NAME}  # Имя БД (из .env)
+      - POSTGRES_USER=${DATABASE_USER}  # Имя пользователя (из .env)
+      - POSTGRES_PASSWORD=${DATABASE_PASSWORD}  # Пароль пользователя (из .env)
+
+    # Загрузка остальных переменных окружения из файла .env
+    env_file:
+      - .env
+
+    # Открыть порт для других контейнеров в этой сети Docker (но не для хоста)
+    expose:
+      - "5432"  # Стандартный порт PostgreSQL
+
+    # Том для постоянного хранения данных БД
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    # Проверка здоровья сервиса db
+    healthcheck:
+      # Проверка подключения к БД, где DATABASE_USER и DATABASE_NAME взяты из .env
+      test: [ "CMD-SHELL", "pg_isready -U ${DATABASE_USER} -d ${DATABASE_NAME}" ]
+      interval: 30s    # Проверка каждые 30 секунд
+      timeout: 10s     # Таймаут проверки
+      retries: 5       # Количество попыток
+      start_period: 10s # Задержка перед первой проверкой
+  #############################################################################################
+  # Сервис Redis (брокер сообщений для Celery и кеш)
+  redis:
+    # Официальный образ Redis
+    image: redis:latest
+
+    # Открытие порта для доступа к Redis
+    ports:
+      - "6379:6379"  # Перенаправляем порт 6379 контейнера на стандартный порт 6379 на хосте
+
+    # Проверка здоровья сервиса redis
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]  # Проверка подключения к Redis с помощью ping команды
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 10s # Задержка перед первой проверкой
+
+# Определение томов для постоянного хранения данных
+volumes:
+  postgres_data:   # Том для данных PostgreSQL
+  static_volume:   # Том для статических файлов Django
+  media_volume:    # Том для медиа файлов
