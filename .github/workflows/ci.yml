@@ -67,11 +67,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      # Шаг 5: Применение миграций базы данных
-      - name: Run migrations
-        env:
-          SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}  # Использование секретного ключа Django из секретов GitHub
-        run: python manage.py migrate  # Команда Django для применения миграций БД
+#      # Шаг 5: Применение миграций базы данных
+#      - name: Run migrations
+#        env:
+#          SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}  # Использование секретного ключа Django из секретов GitHub
+#        run: python manage.py migrate  # Команда Django для применения миграций БД
 
       # Шаг 6: Запуск тестов для проверки работоспособности приложения
       - name: Run tests
