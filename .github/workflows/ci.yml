@@ -1,0 +1,136 @@
+name: Django CI  # имя workflow
+on: [ push, pull_request ]  # события, на которых будет запускаться workflow
+
+# контейнер для задач, которые выполняются параллельно или последовательно
+jobs:
+  # Определение job с именем "lint", который выполняет проверку кода на соответствие стандартам PEP8
+  lint:
+    # Запуск на последней версии Ubuntu
+    runs-on: ubuntu-latest
+
+    # Последовательность операций внутри job "lint"
+    steps:
+      # Шаг 1: Клонирование репозитория с исходным кодом
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      # Шаг 2: Установка Python нужной версии
+      - name: Set up Python
+        uses: actions/setup-python@v4  # Устанавливает Python
+        with:
+          python-version: '3.12'  # Конкретная версия Python для использования
+
+      # Шаг 3: Обновление pip до последней версии и установка линтера flake8
+      - name: Install flake8
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8
+
+      # Шаг 4: Запуск проверки кода в текущей директории с помощью flake8 на соответствие PEP8
+      - name: Run flake8
+        run: flake8 .
+
+################################################################################################################
+
+  # Определение job с именем "test", которая выполняет тестирование приложения
+  test:
+    runs-on: ubuntu-latest  # Указывает, что job будет запущен на последней версии Ubuntu
+    needs: lint  # Зависимость: выполняется только если задача 'lint' успешна
+
+    # Последовательность операций внутри job "test"
+    steps:
+      # Шаг 1: Клонирование репозитория с исходным кодом
+      - name: Check out code  # Название шага
+        uses: actions/checkout@v3  # Использует официальное действие для клонирования репозитория
+
+      # Шаг 2: Установка Python нужной версии
+      - name: Set up Python
+        uses: actions/setup-python@v4  # Использует стандартное действие для установки Python
+        with: # Параметры для действия setup-python
+          python-version: '3.12'  # Конкретная версия Python для установки
+
+      # Шаг 3: Кэширование pip пакетов для ускорения последующих запусков
+      - name: Cache pip
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip  # Путь к кэшу с зависимостями pip
+          # Уникальный ключ кэша на основе ОС и хэша requirements.txt
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          # Резервный ключ для поиска кэша, если точный ключ не найден
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      # Шаг 4: Установка зависимостей Python из файла requirements.txt
+      - name: Install dependencies
+        # Команда для выполнения в shell: 1) обновление pip до последней версии; 2) установка пакетов из requirements.txt
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # Шаг 5: Применение миграций базы данных
+      - name: Run migrations
+        run: python manage.py migrate  # Команда Django для применения миграций БД
+
+      # Шаг 6: Запуск тестов для проверки работоспособности приложения
+      - name: Run tests
+        run: python manage.py test  # Команда Django для запуска тестового набора
+################################################################################################################
+  # Определение job с именем "build", которая выполняет сборку и интеграцию Docker-образа
+  build:
+    # Указание ОС для запуска (последняя версия Ubuntu)
+    runs-on: ubuntu-latest
+    needs: test  # Зависимость: выполняется только если задача 'test' успешна
+
+    # Последовательность операций внутри job "build"
+    steps:
+      # Шаг 1: Получение кода из репозитория
+      - name: Check out code
+        # Использование официального action для клонирования репозитория
+        uses: actions/checkout@v3
+
+      # Шаг 2: Авторизация в Docker Hub с использованием секретного токена
+      - name: Log in to Docker Hub
+        # Универсальная команда для входа в Docker Hub, использующая секретный токен доступа
+        # secrets.DOCKER_HUB_ACCESS_TOKEN - секретный токен доступа (добавить в секреты GitHub)
+        # secrets.DOCKER_HUB_USERNAME - имя пользователя Docker Hub (добавить в секреты GitHub)
+        run: echo ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }} | docker login -u ${{ secrets.DOCKER_HUB_USERNAME }} --password-stdin
+
+      # Шаг 3: Сборка Docker образа, используя тег из последнего коммита
+      - name: Build Docker image
+        # Команда сборки образа с тегом, содержащим:
+        # - имя пользователя Docker Hub
+        # - название образа "myapp" (можно заменить на другое имя)
+        # - хэш коммита для уникальной идентификации
+        run: docker build -t ${{ secrets.DOCKER_HUB_USERNAME }}/myapp:${{ github.sha }} .
+
+      # Шаг 4: Публикация собранного образа в Docker Hub
+      - name: Push Docker image to Docker Hub
+        # Команда отправки собранного образа в реестр Docker Hub (можно заменить 'myapp' на другое имя из шага 3)
+        run: docker push ${{ secrets.DOCKER_HUB_USERNAME }}/myapp:${{ github.sha }}
+
+################################################################################################################
+
+  # Задача деплоя (запускается только после успешного выполнения тестов)
+  deploy:
+    runs-on: ubuntu-latest  # Определение платформы для запуска задачи (ubuntu-latest - последняя версия Ubuntu)
+    needs: build  # Зависимость от предыдущей задачи "build" (если она завершилась успешно)
+
+    # Последовательность операций внутри job "deploy"
+    steps:
+      # Шаг 1: Настройка SSH-подключения для безопасного подключения к серверу
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.9.0  # Использует стандартное действие для SSH-подключения
+        with:
+          ssh-private-key: ${{ secrets.SSH_KEY }}  # Приватный SSH ключ из секретов GitHub
+
+      # Шаг 2: Деплой приложения на сервер
+      - name: Deploy to server
+        # Команда для деплоя приложения на сервер с использованием SSH (можно заменить 'myapp' на другое имя):
+        # 1) Скачивание образа с Docker Hub; 2) Остановка и удаление старого контейнера; 3) Запуск нового контейнера.
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
+          docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/myapp:${{ github.sha }}
+          docker stop myapp || true
+          docker rm myapp || true
+          docker run -d --name myapp -p 80:8000 ${{ secrets.DOCKER_HUB_USERNAME }}/myapp:${{ github.sha }}
+          EOF

@@ -1,4 +1,5 @@
 import os
+import sys
 from datetime import timedelta
 from pathlib import Path
 
@@ -195,3 +196,13 @@ CELERY_BEAT_SCHEDULE = {
         ),  # Каждый понедельник в 8:00
     },
 }
+
+# Динамически настраивает базу данных для тестов в Django проекте
+# Проверяет, присутствует ли 'test' в аргументах командной строки
+if 'test' in sys.argv:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',  # Используется SQLite вместо основной БД
+            'NAME': BASE_DIR / 'db.sqlite3',         # Файл БД SQLite в корне проекта
+        }
+    }
