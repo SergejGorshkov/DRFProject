@@ -30,7 +30,7 @@ services:
     # Переменные окружения для подключения к БД
     environment:
       - DATABASE_HOST=db  # Имя сервиса как хост
-      - DATABASE_PORT=5432  # Порт БД по умолчанию
+      - DATABASE_PORT=${DATABASE_PORT}  # Порт БД по умолчанию
       - REDIS_URL=${REDIS_URL}  # URL Redis из .env
       - CELERY_BROKER_URL=${CELERY_BROKER_URL}  # URL Celery из .env
 
@@ -114,8 +114,8 @@ services:
       - .env
 
     # Открыть порт для других контейнеров в этой сети Docker (но не для хоста)
-    expose:
-      - "5432"  # Стандартный порт PostgreSQL
+    ports:
+      - "5432:5432"  # Перенаправление порта 5432 контейнера на порт 5432 хоста
 
     # Том для постоянного хранения данных БД
     volumes:
