@@ -1,32 +1,6 @@
 name: Django CI  # имя workflow
 on: [ push, pull_request ]  # события, на которых будет запускаться workflow
 
-runs-on: ubuntu-latest
-services:
-  postgres:
-    image: postgres:16
-    env:
-      POSTGRES_DB:  $${{ secrets. DATABASE_NAME }}
-      POSTGRES_USER: ${{ secrets.DATABASE_USER }}
-      POSTGRES_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
-    ports:
-      - 5432:5432
-    options: >-
-      --health-cmd "pg_isready -U postgres"
-      --health-interval 10s
-      --health-timeout 5s
-      --health-retries 5
-  redis:
-    image: redis:7
-    ports:
-      - 6379:6379
-    options: >-
-      --health-cmd "redis-cli ping"
-      --health-interval 10s
-      --health-timeout 5s
-      --health-retries 5
-################################################################################################################
-
 # контейнер для задач, которые выполняются параллельно или последовательно
 jobs:
   # Определение job с именем "lint", который выполняет проверку кода на соответствие стандартам PEP8
@@ -62,6 +36,30 @@ jobs:
   test:
     runs-on: ubuntu-latest  # Указывает, что job будет запущен на последней версии Ubuntu
     needs: lint  # Зависимость: выполняется только если задача 'lint' успешна
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: ${{ secrets.DATABASE_NAME }}
+          POSTGRES_USER: ${{ secrets.DATABASE_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     # Последовательность операций внутри job "test"
     steps:
