@@ -93,10 +93,16 @@ jobs:
 
       # Шаг 5: Применение миграций базы данных
       - name: Run migrations
+        env:
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          DATABASE_URL: postgres://${{ secrets.DATABASE_USER }}:${{ secrets.DATABASE_PASSWORD }}@localhost:5432/${{ secrets.DATABASE_NAME }}
         run: python manage.py migrate  # Команда Django для применения миграций БД
 
       # Шаг 6: Запуск тестов для проверки работоспособности приложения
       - name: Run tests
+        env:
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          DATABASE_URL: postgres://${{ secrets.DATABASE_USER }}:${{ secrets.DATABASE_PASSWORD }}@localhost:5432/${{ secrets.DATABASE_NAME }}
         run: python manage.py test  # Команда Django для запуска тестового набора
 ################################################################################################################
   # Определение job с именем "build", которая выполняет сборку и интеграцию Docker-образа
