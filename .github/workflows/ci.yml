@@ -12,7 +12,7 @@ jobs:
     steps:
       # Шаг 1: Клонирование репозитория с исходным кодом
       - name: Check out code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       # Шаг 2: Установка Python нужной версии
       - name: Set up Python
@@ -37,9 +37,10 @@ jobs:
     runs-on: ubuntu-latest  # Указывает, что job будет запущен на последней версии Ubuntu
     needs: lint  # Зависимость: выполняется только если задача 'lint' успешна
 
+    # Определение контейнеров с сервисами, которые будут запущены вместе с job "test"
     services:
-      postgres:
-        image: postgres:16
+      postgres:  # Установка PostgreSQL
+        image: postgres:15
         env:
           POSTGRES_DB: ${{ secrets.DATABASE_NAME }}
           POSTGRES_USER: ${{ secrets.DATABASE_USER }}
@@ -51,7 +52,8 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-      redis:
+
+      redis:  # Установка Redis для кэширования
         image: redis:7
         ports:
           - 6379:6379
@@ -64,14 +66,14 @@ jobs:
     # Последовательность операций внутри job "test"
     steps:
       # Шаг 1: Клонирование репозитория с исходным кодом
-      - name: Check out code  # Название шага
-        uses: actions/checkout@v3  # Использует официальное действие для клонирования репозитория
+      - name: Check out code
+        uses: actions/checkout@v4
 
       # Шаг 2: Установка Python нужной версии
       - name: Set up Python
-        uses: actions/setup-python@v4  # Использует стандартное действие для установки Python
-        with: # Параметры для действия setup-python
-          python-version: '3.12'  # Конкретная версия Python для установки
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
 
       # Шаг 3: Кэширование pip пакетов для ускорения последующих запусков
       - name: Cache pip
@@ -91,12 +93,41 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      # Шаг 5: Применение миграций базы данных
+      # Шаг 5: Ожидание полного запуска контейнеров PostgreSQL и Redis (для выполнения миграций и тестов),
+      # чтобы приложение не пыталось подключиться к БД или к кешу до того, как она будет готова принимать соединения.
+      - name: Wait for Postgres
+        run: |
+          until pg_isready -h localhost -p 5432 -U postgres; do
+            echo "Waiting for Postgres..."
+            sleep 3
+          done
+      - name: Wait for Redis
+        run: |
+          until docker exec $(docker ps -q -f ancestor=redis:7) redis-cli ping | grep PONG; do
+            echo "Waiting for Redis..."
+            sleep 3
+          done
+
+      # Шаг 6: Применение миграций базы данных
       - name: Run migrations
+        env:
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          DATABASE_NAME: ${{ secrets.DATABASE_NAME }}
+          DATABASE_USER: ${{ secrets.DATABASE_USER }}
+          DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+          DATABASE_HOST: ${{ secrets.DATABASE_HOST }}
+          DATABASE_PORT: ${{ secrets.DATABASE_PORT }}
         run: python manage.py migrate  # Команда Django для применения миграций БД
 
-      # Шаг 6: Запуск тестов для проверки работоспособности приложения
+      # Шаг 7: Запуск тестов для проверки работоспособности приложения
       - name: Run tests
+        env:
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          DATABASE_NAME: ${{ secrets.DATABASE_NAME }}
+          DATABASE_USER: ${{ secrets.DATABASE_USER }}
+          DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+          DATABASE_HOST: ${{ secrets.DATABASE_HOST }}
+          DATABASE_PORT: ${{ secrets.DATABASE_PORT }}
         run: python manage.py test  # Команда Django для запуска тестового набора
 ################################################################################################################
   # Определение job с именем "build", которая выполняет сборку и интеграцию Docker-образа
@@ -110,46 +141,40 @@ jobs:
       # Шаг 1: Получение кода из репозитория
       - name: Check out code
         # Использование официального action для клонирования репозитория
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       # Шаг 2: Авторизация в Docker Hub с использованием секретного токена
       - name: Log in to Docker Hub
-        # Универсальная команда для входа в Docker Hub, использующая секретный токен доступа
-        # secrets.DOCKER_HUB_ACCESS_TOKEN - секретный токен доступа (добавить в секреты GitHub)
-        # secrets.DOCKER_HUB_USERNAME - имя пользователя Docker Hub (добавить в секреты GitHub)
+        # Команда для входа в DockerHub, использующая секретный токен доступа и имя пользователя DockerHub
         run: echo ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }} | docker login -u ${{ secrets.DOCKER_HUB_USERNAME }} --password-stdin
 
       # Шаг 3: Сборка Docker образа, используя тег из последнего коммита
       - name: Build Docker image
-        # Команда сборки образа с тегом, содержащим:
-        # - имя пользователя Docker Hub
-        # - название образа "myapp" (можно заменить на другое имя)
-        # - хэш коммита для уникальной идентификации
+        # Команда сборки образа с тегом, содержащим: имя пользователя Docker Hub, имя приложения "myapp" и хэш коммита
+        # для уникальной идентификации
         run: docker build -t ${{ secrets.DOCKER_HUB_USERNAME }}/myapp:${{ github.sha }} .
 
       # Шаг 4: Публикация собранного образа в Docker Hub
       - name: Push Docker image to Docker Hub
-        # Команда отправки собранного образа в реестр Docker Hub (можно заменить 'myapp' на другое имя из шага 3)
+        # Команда отправки собранного образа в реестр Docker Hub
         run: docker push ${{ secrets.DOCKER_HUB_USERNAME }}/myapp:${{ github.sha }}
 
 ################################################################################################################
 
-  # Задача деплоя (запускается только после успешного выполнения тестов)
+  # Задача деплоя (запускается только после успешной сборки Docker-образа)
   deploy:
     runs-on: ubuntu-latest  # Определение платформы для запуска задачи (ubuntu-latest - последняя версия Ubuntu)
     needs: build  # Зависимость от предыдущей задачи "build" (если она завершилась успешно)
-
-    # Последовательность операций внутри job "deploy"
     steps:
       # Шаг 1: Настройка SSH-подключения для безопасного подключения к серверу
       - name: Set up SSH
-        uses: webfactory/ssh-agent@v0.9.0  # Использует стандартное действие для SSH-подключения
+        uses: webfactory/ssh-agent@v0.9.0
         with:
-          ssh-private-key: ${{ secrets.SSH_KEY }}  # Приватный SSH ключ из секретов GitHub
+          ssh-private-key: ${{ secrets.SSH_KEY }}
 
       # Шаг 2: Деплой приложения на сервер
       - name: Deploy to server
-        # Команда для деплоя приложения на сервер с использованием SSH (можно заменить 'myapp' на другое имя):
+        # Команда для деплоя приложения на сервер с использованием SSH:
         # 1) Скачивание образа с Docker Hub; 2) Остановка и удаление старого контейнера; 3) Запуск нового контейнера.
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
