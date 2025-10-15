@@ -97,7 +97,7 @@ DATABASES = {
         "NAME": os.getenv("DATABASE_NAME"),
         "USER": os.getenv("DATABASE_USER", default="postgres"),
         "PASSWORD": os.getenv("DATABASE_PASSWORD"),
-        "HOST": os.getenv("DATABASE_HOST", default="localhost"),
+        "HOST": os.getenv("DATABASE_HOST"),
         "PORT": os.getenv("DATABASE_PORT", default="5432"),
     }
 }
@@ -142,7 +142,7 @@ STATIC_URL = "/static/"  # Маршрут к папке со статическ�
 STATICFILES_DIRS = (
     BASE_DIR / "static",
 )  # Список папок на диске, из которых будут подгружаться статические файлы
-# STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")  # Путь к папке на диске, куда будут сохраняться стат. файлы
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")  # Путь к папке на диске, куда будут сохраняться стат. файлы
 
 MEDIA_URL = "/media/"  # Путь к папке с медиафайлами
 MEDIA_ROOT = os.path.join(

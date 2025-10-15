@@ -47,7 +47,7 @@ services:
     # Монтирование томов для хранения данных и статики в Nginx
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
-      - static_volume:/app/static
+      - ./static:/app/static
     depends_on:
       - web  # Зависимость от веб-сервиса
   #############################################################################################

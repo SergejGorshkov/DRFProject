@@ -21,7 +21,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Копируем исходный код приложения в контейнер
 COPY . .
 
-# Создаем директории для медиафайлов и статики
+# Создаем директории для медиафайлов и статики и назначаем права доступа
 RUN mkdir -p /app/static /app/media
 RUN chown -R www-data:www-data /app/static /app/media
 RUN chmod -R 755 /app/static /app/media
