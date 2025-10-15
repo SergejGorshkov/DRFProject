@@ -166,7 +166,7 @@ jobs:
     runs-on: ubuntu-latest  # Определение платформы для запуска задачи (ubuntu-latest - последняя версия Ubuntu)
     needs: build  # Зависимость от предыдущей задачи "build" (если она завершилась успешно)
     steps:
-      # Шаг 1: Настройка SSH-подключения для безопасного подключения к серверу
+      # Настройка SSH-подключения для безопасного подключения к серверу
       - name: Set up SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -175,26 +175,25 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           passphrase: ${{ secrets.SSH_PASSPHRASE }}
 
-
-      # Шаг 2: Деплой приложения на сервер
-      - name: Deploy to server
-        # Команда для деплоя приложения на сервер с использованием SSH:
-        # 1) Скачивание образа с Docker Hub; 2) Остановка и удаление старого контейнера; 3) Запуск нового контейнера.
-        run: |
-          cd /DRFProject
-          cat < 'EOF' > .env
-          SECRET_KEY=${{ secrets.SECRET_KEY }}
-          CELERY_BROKER_URL=redis://redis:6379/1
-          CELERY_RESULT_BACKEND=redis://redis:6379/2
-          REDIS_URL=redis://redis:6379/0
-          EMAIL_HOST=smtp.yandex.ru
-          EMAIL_PORT=465
-          STRIPE_API_KEY=${{ secrets.STRIPE_API_KEY }}
-          EMAIL_HOST_USER=${{ secrets.EMAIL_HOST_USER }}
-          EMAIL_HOST_PASSWORD=${{ secrets.EMAIL_HOST_PASSWORD }}          
-          EOF
-          docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/myapp:${{ github.sha }}
-          docker stop myapp || true
-          docker rm myapp || true
-          docker run -d --name myapp -p 80:8000 ${{ secrets.DOCKER_HUB_USERNAME }}/myapp:${{ github.sha }}
-          EOF
+          script: |
+            cd /home/${{ secrets.SSH_USER }}/DRFProject
+            
+          # Создание файла .env
+            echo "SECRET_KEY=${{ secrets.SECRET_KEY }}" > .env
+            echo "CELERY_BROKER_URL=redis://redis:6379/1" >> .env
+            echo "CELERY_RESULT_BACKEND=redis://redis:6379/2" >> .env
+            echo "REDIS_URL=redis://redis:6379/0" >> .env
+            echo "EMAIL_HOST=smtp.yandex.ru" >> .env
+            echo "EMAIL_PORT=465" >> .env
+            echo "STRIPE_API_KEY=${{ secrets.STRIPE_API_KEY }}" >> .env
+            echo "EMAIL_HOST_USER=${{ secrets.EMAIL_HOST_USER }}" >> .env
+            echo "EMAIL_HOST_PASSWORD=${{ secrets.EMAIL_HOST_PASSWORD }}" >> .env
+            
+          # Деплой контейнера
+            docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/myapp:${{ github.sha }}
+          # Останавливаем и удаляем старый контейнер
+            docker stop myapp || true
+            docker rm myapp || true
+          # Запуск нового контейнера с монтированием .env файла          
+            docker run -d --name myapp -p 80:8000 --env-file .env 
+                    ${{ secrets.DOCKER_HUB_USERNAME }}/myapp:${{ github.sha }}
