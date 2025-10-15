@@ -181,7 +181,7 @@ jobs:
         # Команда для деплоя приложения на сервер с использованием SSH:
         # 1) Скачивание образа с Docker Hub; 2) Остановка и удаление старого контейнера; 3) Запуск нового контейнера.
         run: |
-          cd /home/${{ SSH_USER }}/DRFProject
+          cd /home/${{ secrets.SSH_USER }}/DRFProject
           cat < 'EOF' > .env
           SECRET_KEY=${{ secrets.SECRET_KEY }}
           CELERY_BROKER_URL=redis://redis:6379/1
