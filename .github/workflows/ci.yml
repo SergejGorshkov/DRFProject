@@ -178,7 +178,7 @@ jobs:
           script: |
             cd /home/${{ secrets.SSH_USER }}/DRFProject
             
-          # Создание файла .env
+            # Создание файла .env
             echo "SECRET_KEY=${{ secrets.SECRET_KEY }}" > .env
             echo "CELERY_BROKER_URL=redis://redis:6379/1" >> .env
             echo "CELERY_RESULT_BACKEND=redis://redis:6379/2" >> .env
@@ -189,11 +189,11 @@ jobs:
             echo "EMAIL_HOST_USER=${{ secrets.EMAIL_HOST_USER }}" >> .env
             echo "EMAIL_HOST_PASSWORD=${{ secrets.EMAIL_HOST_PASSWORD }}" >> .env
             
-          # Деплой контейнера
+            # Деплой контейнера
             docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/myapp:${{ github.sha }}
-          # Останавливаем и удаляем старый контейнер
+            # Останавливаем и удаляем старый контейнер
             docker stop myapp || true
             docker rm myapp || true
-          # Запуск нового контейнера с монтированием .env файла          
+            # Запуск нового контейнера с монтированием .env файла          
             docker run -d --name myapp -p 80:8000 --env-file .env 
                     ${{ secrets.DOCKER_HUB_USERNAME }}/myapp:${{ github.sha }}
