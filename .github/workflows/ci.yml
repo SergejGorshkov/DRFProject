@@ -1,5 +1,5 @@
 name: Django CI  # имя workflow
-on: [ push, pull_request ]  # события, на которых будет запускаться workflow
+on: [ push ]  # события, на которых будет запускаться workflow
 
 # контейнер для задач, которые выполняются параллельно или последовательно
 jobs:
@@ -181,7 +181,18 @@ jobs:
         # Команда для деплоя приложения на сервер с использованием SSH:
         # 1) Скачивание образа с Docker Hub; 2) Остановка и удаление старого контейнера; 3) Запуск нового контейнера.
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
+          cd /home/${{ SSH_USER }}/DRFProject
+          cat < 'EOF' > .env
+          SECRET_KEY=${{ secrets.SECRET_KEY }}
+          CELERY_BROKER_URL=redis://redis:6379/1
+          CELERY_RESULT_BACKEND=redis://redis:6379/2
+          REDIS_URL=redis://redis:6379/0
+          EMAIL_HOST=smtp.yandex.ru
+          EMAIL_PORT=465
+          STRIPE_API_KEY=${{ secrets.STRIPE_API_KEY }}
+          EMAIL_HOST_USER=${{ secrets.EMAIL_HOST_USER }}
+          EMAIL_HOST_PASSWORD=${{ secrets.EMAIL_HOST_PASSWORD }}          
+          EOF
           docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/myapp:${{ github.sha }}
           docker stop myapp || true
           docker rm myapp || true
