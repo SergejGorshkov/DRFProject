@@ -37,6 +37,31 @@ jobs:
     runs-on: ubuntu-latest  # Указывает, что job будет запущен на последней версии Ubuntu
     needs: lint  # Зависимость: выполняется только если задача 'lint' успешна
 
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: ${{ secrets.DATABASE_NAME }}
+          POSTGRES_USER: ${{ secrets.DATABASE_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Check out code
         uses: actions/checkout@v4
@@ -46,10 +71,30 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Cache pip
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          
+          # Ожидание PostgreSQL
+          - name: Wait for PostgreSQL to be ready
+            run: |
+              for i in {1..30}; do
+                if pg_isready -h localhost -p 5432 -U ${{ secrets.DATABASE_USER }} -d ${{ secrets.DATABASE_NAME }}; then
+                  echo "PostgreSQL is ready!"
+                  break
+                fi
+                echo "Waiting for PostgreSQL... attempt $i"
+                sleep 2
+              done
 
       - name: Create .env for tests
         run: |
@@ -60,11 +105,26 @@ jobs:
           echo "DATABASE_HOST=localhost" >> .env
           echo "DATABASE_PORT=5432" >> .env
           echo "DEBUG=True" >> .env
+          echo "ALLOWED_HOSTS=localhost,127.0.0.1" >> .env
 
       - name: Run migrations
+        env:
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          DATABASE_NAME: ${{ secrets.DATABASE_NAME }}
+          DATABASE_USER: ${{ secrets.DATABASE_USER }}
+          DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+          DATABASE_HOST: localhost
+          DATABASE_PORT: 5432
         run: python manage.py migrate
 
       - name: Run tests
+        env:
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          DATABASE_NAME: ${{ secrets.DATABASE_NAME }}
+          DATABASE_USER: ${{ secrets.DATABASE_USER }}
+          DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+          DATABASE_HOST: localhost
+          DATABASE_PORT: 5432
         run: python manage.py test
 ################################################################################################################
   # Определение job с именем "build", которая выполняет сборку и интеграцию Docker-образа
