@@ -114,7 +114,7 @@ services:
   # Сервис базы данных PostgreSQL
   db:
     # Официальный образ PostgreSQL v.16.0 из Docker Hub
-    image: postgres:16.0
+    image: postgres:15
 
     # Параметры подключения к БД
     environment:
@@ -146,7 +146,7 @@ services:
   # Сервис Redis (брокер сообщений для Celery и кеш)
   redis:
     # Официальный образ Redis
-    image: redis:latest
+    image: redis:7-alpine
 
     # Открытие порта для доступа к Redis
     ports:

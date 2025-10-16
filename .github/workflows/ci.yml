@@ -37,98 +37,35 @@ jobs:
     runs-on: ubuntu-latest  # Указывает, что job будет запущен на последней версии Ubuntu
     needs: lint  # Зависимость: выполняется только если задача 'lint' успешна
 
-    # Определение контейнеров с сервисами, которые будут запущены вместе с job "test"
-    services:
-      postgres:  # Установка PostgreSQL
-        image: postgres:16.0
-        env:
-          POSTGRES_DB: ${{ secrets.DATABASE_NAME }}
-          POSTGRES_USER: ${{ secrets.DATABASE_USER }}
-          POSTGRES_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-      redis:  # Установка Redis для кэширования
-        image: redis:7
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-    # Последовательность операций внутри job "test"
     steps:
-      # Шаг 1: Клонирование репозитория с исходным кодом
       - name: Check out code
         uses: actions/checkout@v4
 
-      # Шаг 2: Установка Python нужной версии
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.12'
 
-      # Шаг 3: Кэширование pip пакетов для ускорения последующих запусков
-      - name: Cache pip
-        uses: actions/cache@v3
-        with:
-          path: ~/.cache/pip  # Путь к кэшу с зависимостями pip
-          # Уникальный ключ кэша на основе ОС и хэша requirements.txt
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-          # Резервный ключ для поиска кэша, если точный ключ не найден
-          restore-keys: |
-            ${{ runner.os }}-pip-
-
-      # Шаг 4: Установка зависимостей Python из файла requirements.txt
       - name: Install dependencies
-        # Команда для выполнения в shell: 1) обновление pip до последней версии; 2) установка пакетов из requirements.txt
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      # Шаг 5: Ожидание полного запуска контейнеров PostgreSQL и Redis (для выполнения миграций и тестов),
-      # чтобы приложение не пыталось подключиться к БД или к кешу до того, как она будет готова принимать соединения.
-      - name: Wait for Postgres
+      - name: Create .env for tests
         run: |
-          until pg_isready -h localhost -p 5432 -U postgres; do
-            echo "Waiting for Postgres..."
-            sleep 3
-          done
-      - name: Wait for Redis
-        run: |
-          until docker exec $(docker ps -q -f ancestor=redis:7) redis-cli ping | grep PONG; do
-            echo "Waiting for Redis..."
-            sleep 3
-          done
+          echo "SECRET_KEY=${{ secrets.SECRET_KEY }}" > .env
+          echo "DATABASE_NAME=${{ secrets.DATABASE_NAME }}" >> .env
+          echo "DATABASE_USER=${{ secrets.DATABASE_USER }}" >> .env
+          echo "DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }}" >> .env
+          echo "DATABASE_HOST=localhost" >> .env
+          echo "DATABASE_PORT=5432" >> .env
+          echo "DEBUG=True" >> .env
 
-      # Шаг 6: Применение миграций базы данных
       - name: Run migrations
-        env:
-          SECRET_KEY: ${{ secrets.SECRET_KEY }}
-          DATABASE_NAME: ${{ secrets.DATABASE_NAME }}
-          DATABASE_USER: ${{ secrets.DATABASE_USER }}
-          DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
-          DATABASE_HOST: ${{ secrets.DATABASE_HOST }}
-          DATABASE_PORT: ${{ secrets.DATABASE_PORT }}
-        run: python manage.py migrate  # Команда Django для применения миграций БД
+        run: python manage.py migrate
 
-      # Шаг 7: Запуск тестов для проверки работоспособности приложения
       - name: Run tests
-        env:
-          SECRET_KEY: ${{ secrets.SECRET_KEY }}
-          DATABASE_NAME: ${{ secrets.DATABASE_NAME }}
-          DATABASE_USER: ${{ secrets.DATABASE_USER }}
-          DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
-          DATABASE_HOST: ${{ secrets.DATABASE_HOST }}
-          DATABASE_PORT: ${{ secrets.DATABASE_PORT }}
-        run: python manage.py test  # Команда Django для запуска тестового набора
+        run: python manage.py test
 ################################################################################################################
   # Определение job с именем "build", которая выполняет сборку и интеграцию Docker-образа
   build:
@@ -175,24 +112,31 @@ jobs:
           passphrase: ${{ secrets.SSH_PASSPHRASE }}
           script: |
             cd /home/${{ secrets.SSH_USER }}/DRFProject
-            
-            # Создаем .env файл
-            echo "SECRET_KEY=${{ secrets.SECRET_KEY }}" > .env
-            echo "CELERY_BROKER_URL=redis://redis:6379/1" >> .env
-            echo "CELERY_RESULT_BACKEND=redis://redis:6379/2" >> .env
-            echo "REDIS_URL=redis://redis:6379/0" >> .env
-            echo "EMAIL_HOST=smtp.yandex.ru" >> .env
-            echo "EMAIL_PORT=465" >> .env
-            echo "STRIPE_API_KEY=${{ secrets.STRIPE_API_KEY }}" >> .env
-            echo "EMAIL_HOST_USER=${{ secrets.EMAIL_HOST_USER }}" >> .env
-            echo "EMAIL_HOST_PASSWORD=${{ secrets.EMAIL_HOST_PASSWORD }}" >> .env
-            
-            # Деплой контейнера с sudo
-            sudo docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/myapp:${{ github.sha }}
-            sudo docker stop myapp || true
-            sudo docker rm myapp || true
-            sudo docker run -d \
-            --name myapp \
-            -p 80:8000 \
-            --env-file .env \
-            ${{ secrets.DOCKER_HUB_USERNAME }}/myapp:${{ github.sha }}
+
+            # Создаем полный .env файл
+            cat > .env << EOF
+            SECRET_KEY=${{ secrets.SECRET_KEY }}
+            DEBUG=False
+            ALLOWED_HOSTS=${{ secrets.SERVER_IP }},localhost,127.0.0.1
+            DATABASE_NAME=${{ secrets.DATABASE_NAME }}
+            DATABASE_USER=${{ secrets.DATABASE_USER }}
+            DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }}
+            DATABASE_HOST=db
+            DATABASE_PORT=5432
+            CELERY_BROKER_URL=redis://redis:6379/1
+            CELERY_RESULT_BACKEND=redis://redis:6379/2
+            REDIS_URL=redis://redis:6379/0
+            EMAIL_HOST=smtp.yandex.ru
+            EMAIL_PORT=465
+            STRIPE_API_KEY=${{ secrets.STRIPE_API_KEY }}
+            EMAIL_HOST_USER=${{ secrets.EMAIL_HOST_USER }}
+            EMAIL_HOST_PASSWORD=${{ secrets.EMAIL_HOST_PASSWORD }}
+            EOF
+
+            # Запускаем всю инфраструктуру через docker-compose
+            sudo docker-compose down
+            sudo docker-compose up -d
+
+            # Ждем запуска БД и выполняем миграции
+            sudo docker-compose exec -T web python manage.py migrate --noinput
+            sudo docker-compose exec -T web python manage.py collectstatic --noinput

@@ -29,5 +29,5 @@ RUN chmod -R 755 /app/static /app/media
 # Открываем порт 8000 для взаимодействия с приложением Django
 EXPOSE 8000
 
-# Определяем команду для запуска приложения (для production)
-CMD ["sh", "-c", "python manage.py collectstatic --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000"]
+# Определяем команду для запуска приложения
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000"]
