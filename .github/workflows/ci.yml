@@ -1,5 +1,5 @@
 name: Django CI  # имя workflow
-on: [ push ]  # события, на которых будет запускаться workflow
+on: [ push, pull_request ]  # события, на которых будет запускаться workflow
 
 # контейнер для задач, которые выполняются параллельно или последовательно
 jobs:
@@ -40,7 +40,7 @@ jobs:
     # Определение контейнеров с сервисами, которые будут запущены вместе с job "test"
     services:
       postgres:  # Установка PostgreSQL
-        image: postgres:15
+        image: postgres:16.0
         env:
           POSTGRES_DB: ${{ secrets.DATABASE_NAME }}
           POSTGRES_USER: ${{ secrets.DATABASE_USER }}
