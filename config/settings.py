@@ -142,7 +142,7 @@ STATIC_URL = "/static/"  # Маршрут к папке со статическ�
 STATICFILES_DIRS = (
     BASE_DIR / "static",
 )  # Список папок на диске, из которых будут подгружаться статические файлы
-STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")  # Путь к папке на диске, куда будут сохраняться стат. файлы
+# STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")  # Путь к папке на диске, куда будут сохраняться стат. файлы
 
 MEDIA_URL = "/media/"  # Путь к папке с медиафайлами
 MEDIA_ROOT = os.path.join(
