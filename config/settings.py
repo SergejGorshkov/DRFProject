@@ -139,10 +139,8 @@ USE_TZ = True  # Включение поддержки временных зон
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = "/static/"  # Маршрут к папке со статическими файлами
-STATICFILES_DIRS = (
-    BASE_DIR / "static",
-)  # Список папок на диске, из которых будут подгружаться статические файлы
-# STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")  # Путь к папке на диске, куда будут сохраняться стат. файлы
+# STATICFILES_DIRS = (BASE_DIR / "static",)  # Список папок на диске, из которых будут подгружаться статические файлы
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")  # Путь к папке на диске, куда будут сохраняться стат. файлы
 
 MEDIA_URL = "/media/"  # Путь к папке с медиафайлами
 MEDIA_ROOT = os.path.join(
