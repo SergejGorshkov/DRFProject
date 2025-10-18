@@ -122,9 +122,9 @@ services:
       - POSTGRES_USER=${DATABASE_USER}  # Имя пользователя (из .env)
       - POSTGRES_PASSWORD=${DATABASE_PASSWORD}  # Пароль пользователя (из .env)
 
-    # Загрузка остальных переменных окружения из файла .env
-    env_file:
-      - ./.env
+#    # Загрузка остальных переменных окружения из файла .env
+#    env_file:
+#      - ./.env
 
     # Открыть порт для других контейнеров в этой сети Docker
     ports:
