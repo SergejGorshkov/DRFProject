@@ -1,4 +1,5 @@
 import os
+import sys
 from datetime import timedelta
 from pathlib import Path
 
@@ -21,7 +22,7 @@ STRIPE_API_KEY = os.getenv("STRIPE_API_KEY")  # Ключ API для Stripe
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True if os.getenv("DEBUG") == "True" else False
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = ["*"]  # Разрешенные хосты для доступа к приложению
 
 # Application definition
 
@@ -52,7 +53,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = "config.urls"
+ROOT_URLCONF = "config.urls"  # Корневой URL-конфигурационный файл
 
 TEMPLATES = [
     {
@@ -96,7 +97,7 @@ DATABASES = {
         "NAME": os.getenv("DATABASE_NAME"),
         "USER": os.getenv("DATABASE_USER", default="postgres"),
         "PASSWORD": os.getenv("DATABASE_PASSWORD"),
-        "HOST": os.getenv("DATABASE_HOST", default="localhost"),
+        "HOST": os.getenv("DATABASE_HOST", 'localhost'),
         "PORT": os.getenv("DATABASE_PORT", default="5432"),
     }
 }
@@ -138,9 +139,8 @@ USE_TZ = True  # Включение поддержки временных зон
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = "/static/"  # Маршрут к папке со статическими файлами
-STATICFILES_DIRS = (
-    BASE_DIR / "static",
-)  # Список папок на диске, из которых будут подгружаться статические файлы
+# STATICFILES_DIRS = (BASE_DIR / "static",)  # Список папок на диске, из которых будут подгружаться статические файлы
+STATIC_ROOT = BASE_DIR / "static"  # Путь к папке на диске, куда будут сохраняться стат. файлы
 
 MEDIA_URL = "/media/"  # Путь к папке с медиафайлами
 MEDIA_ROOT = os.path.join(
@@ -194,4 +194,22 @@ CELERY_BEAT_SCHEDULE = {
             hour=8, minute=0, day_of_week=1
         ),  # Каждый понедельник в 8:00
     },
+}
+
+# Динамически настраивает базу данных для тестов в Django проекте
+# Проверяет, присутствует ли 'test' в аргументах командной строки
+if 'test' in sys.argv:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',  # Используется SQLite вместо основной БД
+            'NAME': BASE_DIR / 'db.sqlite3',         # Файл БД SQLite в корне проекта
+        }
+    }
+
+# Настройка кэша Redis
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': 'redis://redis:6379/0',  # Адрес Redis сервера
+    }
 }

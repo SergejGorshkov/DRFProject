@@ -21,11 +21,13 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Копируем исходный код приложения в контейнер
 COPY . .
 
-# Создаем директорию для медиафайлов
-RUN mkdir -p /app/media
+# Создаем директории для медиафайлов и статики и назначаем права доступа
+RUN mkdir -p /app/static /app/media
+RUN chown -R www-data:www-data /app/static /app/media
+RUN chmod -R 755 /app/static /app/media
 
 # Открываем порт 8000 для взаимодействия с приложением Django
 EXPOSE 8000
 
 # Определяем команду для запуска приложения
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000"]

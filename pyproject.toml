@@ -26,7 +26,12 @@ dependencies = [
     "django-celery-beat (>=2.5.0,<3.0.0)"
 ]
 
-
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+# Максимальная длина строки
+line-length = 119
+# Файлы, которые не нужно форматировать
+exclude = '(.git|.venv)'
